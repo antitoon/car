@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="nl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HERE Turn-by-Turn Navigatie</title>
+    <script src="https://js.api.here.com/v3/3.1/mapsjs-core.js"></script>
+    <script src="https://js.api.here.com/v3/3.1/mapsjs-service.js"></script>
+    <script src="https://js.api.here.com/v3/3.1/mapsjs-ui.js"></script>
+    <script src="https://js.api.here.com/v3/3.1/mapsjs-mapevents.js"></script>
+    <link rel="stylesheet" href="https://js.api.here.com/v3/3.1/mapsjs-ui.css">
+    <style>
+        #map {
+            width: 100%;
+            height: 500px;
+        }
+
+        #instructions {
+            margin-top: 10px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>HERE Turn-by-Turn Navigatie</h1>
+    <div id="map"></div>
+    <div id="instructions"></div>
+
+    <script>
+        const apiKey = 'GmzT8qENDNylyn3t7f4cJZyHG_0agTrDg0SyGQ-u-BA'; // Vervang dit met je eigen HERE API sleutel
+
+        function initMap() {
+            let platform = new H.service.Platform({ apikey: apiKey });
+            let defaultLayers = platform.createDefaultLayers();
+
+            let map = new H.Map(
+                document.getElementById('map'),
+                defaultLayers.vector.normal.map,
+                { zoom: 14, center: { lat: 52.3676, lng: 4.9041 } } // Amsterdam als startpunt
+            );
+
+            let ui = H.ui.UI.createDefault(map, defaultLayers);
+            let mapEvents = new H.mapevents.MapEvents(map);
+            new H.mapevents.Behavior(mapEvents);
+
+            let router = platform.getRoutingService(null, 8);
+
+            let routingParams = {
+                routingMode: 'fast',
+                transportMode: 'car',
+                origin: '52.3676,4.9041',  // Amsterdam
+                destination: '52.5200,13.4050', // Berlijn
+                return: 'polyline,turnByTurnActions'
+            };
+
+            router.calculateRoute(routingParams, (result) => {
+                if (result.routes.length) {
+                    let route = result.routes[0];
+                    let lineString = new H.geo.LineString();
+                    console.log(route);
+
+                    route.sections.forEach((section) => {
+                        // Decode de geëncodeerde polyline met HERE's functie
+                        let lineString = H.geo.LineString.fromFlexiblePolyline(section.polyline);
+
+                        let polyline = new H.map.Polyline(lineString, {
+                            style: { strokeColor: 'blue', lineWidth: 4 }
+                        });
+
+                        map.addObject(polyline);
+                        map.getViewModel().setLookAtData({ bounds: polyline.getBoundingBox() });
+
+                        let startMarker = new H.map.Marker(section.departure.place.location);
+                        let endMarker = new H.map.Marker(section.arrival.place.location);
+
+                        map.addObjects([startMarker, endMarker]);
+                    });
+
+                    showInstructions(route);
+                }
+            }, (error) => {
+                console.error('Fout bij ophalen route:', error);
+            });
+        }
+
+        function showInstructions(route) {
+            let instructionsDiv = document.getElementById('instructions');
+            instructionsDiv.innerHTML = '<h2>Turn-by-Turn Instructies</h2><ul>';
+
+            route.sections.forEach((section) => {
+                section.turnByTurnActions.forEach((action) => {
+                    let instructionText = generateInstruction(action);
+                    instructionsDiv.innerHTML += `<li>${instructionText}</li>`;
+                });
+            });
+
+            instructionsDiv.innerHTML += '</ul>';
+        }
+
+        // Functie om instructies te genereren op basis van de action-data
+        function generateInstruction(action) {
+            let actionTypes = {
+                "depart": "Vertrek",
+                "arrive": "Aankomst",
+                "turnLeft": "Sla linksaf",
+                "turnRight": "Sla rechtsaf",
+                "continue": "Ga rechtdoor",
+                "enterRoundabout": "Betreed de rotonde",
+                "exitRoundabout": "Neem de afslag op de rotonde",
+                "keepRight": "Houd rechts aan",
+                "keepLeft": "Houd links aan",
+                "uTurnRight": "Maak een U-bocht naar rechts",
+                "uTurnLeft": "Maak een U-bocht naar links"
+            };
+
+            let actionText = actionTypes[action.action] || "Onbekende actie";
+            let roadName = action.nextRoad?.name?.[0]?.value || "onbekende weg";
+            let roadNumber = action.nextRoad?.number?.[0]?.value || "";
+
+            return `${actionText} naar ${roadName} ${roadNumber}`.trim();
+        }
+
+        window.onload = initMap;
+    </script>
+
+</body>
+
+</html>

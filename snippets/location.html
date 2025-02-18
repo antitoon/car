@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Locatie Weergave</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
+        #location { margin-top: 20px; font-size: 1.2em; white-space: pre-line; }
+    </style>
+</head>
+<body>
+    <h1>Jouw huidige locatie</h1>
+    <button onclick="startTracking()">Start locatie tracking</button>
+    <button onclick="stopTracking()">Stop locatie tracking</button>
+    <p id="location">Locatie wordt hier weergegeven...</p>
+    
+    <script>
+        let watchId = null;
+
+        function startTracking() {
+            if (navigator.geolocation) {
+                watchId = navigator.geolocation.watchPosition(showPosition, showError);
+            } else {
+                document.getElementById("location").innerText = "Geolocatie wordt niet ondersteund door deze browser.";
+            }
+        }
+
+        function stopTracking() {
+            if (watchId !== null) {
+                navigator.geolocation.clearWatch(watchId);
+                watchId = null;
+                document.getElementById("location").innerText = "Locatie tracking gestopt.";
+            }
+        }
+
+        function showPosition(position) {
+            document.getElementById("location").innerText = 
+                "Breedtegraad: " + position.coords.latitude + "\n" +
+                "Lengtegraad: " + position.coords.longitude + "\n" +
+                "Nauwkeurigheid: " + position.coords.accuracy + " meter";
+        }
+
+        function showError(error) {
+            switch(error.code) {
+                case error.PERMISSION_DENIED:
+                    document.getElementById("location").innerText = "Gebruiker heeft locatietoegang geweigerd.";
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    document.getElementById("location").innerText = "Locatie-informatie is niet beschikbaar.";
+                    break;
+                case error.TIMEOUT:
+                    document.getElementById("location").innerText = "Locatieverzoek is verlopen.";
+                    break;
+                case error.UNKNOWN_ERROR:
+                    document.getElementById("location").innerText = "Onbekende fout opgetreden.";
+                    break;
+            }
+        }
+    </script>
+</body>
+</html>
